@@ -1,0 +1,6 @@
+---
+# handlers file for swarm
+- name: restart sshd
+  service:
+    name: ssh
+    state: restarted

@@ -1,0 +1,86 @@
+---
+# tasks file for swarm
+- name: Disable password-based SSH login
+  lineinfile:
+    path: /etc/ssh/sshd_config
+    regexp: '^#?PasswordAuthentication'
+    line: 'PasswordAuthentication no'
+  notify:
+    - restart sshd
+
+- name: Ensure required packages are installed
+  apt:
+    name:
+      - mc
+      - ncdu
+      - cifs-utils
+      - nfs-common
+      - apt-transport-https
+      - ca-certificates
+      - curl
+      - gnupg
+      - lsb-release
+    state: present
+    update_cache: yes
+    
+- name: Add Docker's official GPG key
+  apt_key:
+    url: https://download.docker.com/linux/ubuntu/gpg
+    state: present
+
+- name: Set up the stable repository
+  apt_repository:
+    repo: deb [arch=amd64] https://download.docker.com/linux/ubuntu {{ ansible_distribution_release }} stable
+    state: present
+
+- name: Update apt cache
+  apt:
+    update_cache: yes
+
+- name: Install Docker
+  shell: sudo apt install docker-ce={{ VERSION_STRING }} docker-ce-cli={{ VERSION_STRING }} containerd.io docker-buildx-plugin docker-compose-plugin -y
+  become: true
+#  args:
+#    warn: false
+
+- name: Ensure Docker is running
+  service:
+    name: docker
+    state: started
+    enabled: yes
+
+- name: Add users
+  user:
+    name: "{{ item }}"
+    shell: /bin/bash
+    groups: sudo
+    append: yes
+  loop:
+    - admin-1
+    - admin-2
+    - admin-3
+    - ansible
+    - autodeploy
+
+- name: Ensure SSH access without password
+  authorized_key:
+    user: "{{ item }}"
+    key: "{{ lookup('file', '/home/alex/.ssh/id_rsa.pub') }}"
+  loop:
+    - admin-1
+    - admin-2
+    - admin-3
+    - ansible
+    - autodeploy
+
+- name: Add users to the docker group
+  user:
+    name: "{{ item }}"
+    groups: docker
+    append: yes
+  loop:
+    - admin-1
+    - admin-2
+    - admin-3
+    - ansible
+    - autodeploy

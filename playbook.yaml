@@ -1,0 +1,6 @@
+---
+#- name: Prepare servers for Swarm cluster with back-worker labels
+- hosts: all
+  become: true
+  roles:
+    - swarm
