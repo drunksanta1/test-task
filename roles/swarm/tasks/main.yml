@@ -1,6 +1,6 @@
 ---
 # tasks file for swarm
-- name: Disable password-based SSH login
+- name: Использование пароля для входа по ssh - запрещено
   lineinfile:
     path: /etc/ssh/sshd_config
     regexp: '^#?PasswordAuthentication'
@@ -8,7 +8,16 @@
   notify:
     - restart sshd
 
-- name: Ensure required packages are installed
+- name: Заходить под пользователем root - запрещено
+  lineinfile:
+    dest: /etc/ssh/sshd_config
+    regexp: '^PermitRootLogin'
+    line: 'PermitRootLogin prohibit-password'
+    state: present
+    backup: yes
+  notify: restart sshd
+
+- name: Установка необходимого софта
   apt:
     name:
       - mc
@@ -23,33 +32,31 @@
     state: present
     update_cache: yes
     
-- name: Add Docker's official GPG key
+- name: Добавление официальных gpg ключей
   apt_key:
     url: https://download.docker.com/linux/ubuntu/gpg
     state: present
 
-- name: Set up the stable repository
+- name: Добавление репозитория докера
   apt_repository:
     repo: deb [arch=amd64] https://download.docker.com/linux/ubuntu {{ ansible_distribution_release }} stable
     state: present
 
-- name: Update apt cache
+- name: Аптейд кеша
   apt:
     update_cache: yes
 
-- name: Install Docker
+- name: Установка докера версии 20.10.21
   shell: sudo apt install docker-ce={{ VERSION_STRING }} docker-ce-cli={{ VERSION_STRING }} containerd.io docker-buildx-plugin docker-compose-plugin -y
   become: true
-#  args:
-#    warn: false
 
-- name: Ensure Docker is running
+- name: Запуск докера и установка автозапуска
   service:
     name: docker
     state: started
     enabled: yes
 
-- name: Add users
+- name: Добавление пользователей
   user:
     name: "{{ item }}"
     shell: /bin/bash
@@ -62,7 +69,7 @@
     - ansible
     - autodeploy
 
-- name: Ensure SSH access without password
+- name: Доступ по ключам ssh
   authorized_key:
     user: "{{ item }}"
     key: "{{ lookup('file', '/home/alex/.ssh/id_rsa.pub') }}"
@@ -73,7 +80,7 @@
     - ansible
     - autodeploy
 
-- name: Add users to the docker group
+- name: Добавление пользователей в группу докер
   user:
     name: "{{ item }}"
     groups: docker
